@@ -18,6 +18,7 @@ let package = Package(
     products: [
         .library(
             name: "AnyLanguageModel",
+            type: .static,
             targets: ["AnyLanguageModel"]
         )
     ],
