@@ -23,7 +23,7 @@ extension OpenResponsesLanguageModel {
     ) -> OpenResponsesLanguageModel {
         OpenResponsesLanguageModel(
             baseURL: gatewayURL,
-            apiKey: "not-needed",
+            apiKey: "",
             model: model,
             additionalHeaders: ["cf-aig-authorization": "Bearer \(cfToken)"]
         )
@@ -39,7 +39,7 @@ extension AnthropicLanguageModel {
     ) -> AnthropicLanguageModel {
         AnthropicLanguageModel(
             baseURL: gatewayURL,
-            apiKey: "not-needed",
+            apiKey: "",
             model: model,
             additionalHeaders: ["cf-aig-authorization": "Bearer \(cfToken)"]
         )

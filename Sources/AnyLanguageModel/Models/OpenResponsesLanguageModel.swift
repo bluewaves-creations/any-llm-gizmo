@@ -441,7 +441,12 @@ public struct OpenResponsesLanguageModel: LanguageModel {
                             urlSession.fetchEventStream(
                                 .post,
                                 url: url,
-                                headers: ["Authorization": "Bearer \(tokenProvider())"].merging(additionalHeaders) { _, new in new },
+                                headers: {
+                                    var h = additionalHeaders
+                                    let token = tokenProvider()
+                                    if !token.isEmpty { h["Authorization"] = "Bearer \(token)" }
+                                    return h
+                                }(),
                                 body: body
                             )
                         var accumulatedText = ""
@@ -513,7 +518,12 @@ public struct OpenResponsesLanguageModel: LanguageModel {
             let resp: OpenResponsesAPI.Response = try await urlSession.fetch(
                 .post,
                 url: url,
-                headers: ["Authorization": "Bearer \(tokenProvider())"].merging(additionalHeaders) { _, new in new },
+                headers: {
+                    var h = additionalHeaders
+                    let token = tokenProvider()
+                    if !token.isEmpty { h["Authorization"] = "Bearer \(token)" }
+                    return h
+                }(),
                 body: body
             )
 

@@ -67,4 +67,26 @@ struct GatewayFactoryTests {
         )
         #expect(model.baseURL.absoluteString.hasSuffix("/"))
     }
+
+    // MARK: - BYOK (gateway factories omit provider auth keys)
+
+    @Test func openRouterOmitsProviderAuthHeader() {
+        let model = OpenResponsesLanguageModel.openRouter(
+            gatewayURL: URL(string: "https://gw.example.com/openrouter/")!,
+            cfToken: "tok",
+            model: "m"
+        )
+        #expect(model.additionalHeaders["Authorization"] == nil)
+        #expect(model.additionalHeaders["cf-aig-authorization"] != nil)
+    }
+
+    @Test func anthropicGatewayOmitsProviderAuthHeader() {
+        let model = AnthropicLanguageModel.cloudflareGateway(
+            gatewayURL: URL(string: "https://gw.example.com/anthropic/")!,
+            cfToken: "tok",
+            model: "m"
+        )
+        #expect(model.additionalHeaders["x-api-key"] == nil)
+        #expect(model.additionalHeaders["cf-aig-authorization"] != nil)
+    }
 }

@@ -501,9 +501,13 @@ public struct AnthropicLanguageModel: LanguageModel {
 
     private func buildHeaders() -> [String: String] {
         var headers: [String: String] = [
-            "x-api-key": tokenProvider(),
             "anthropic-version": apiVersion,
         ]
+
+        let token = tokenProvider()
+        if !token.isEmpty {
+            headers["x-api-key"] = token
+        }
 
         if let betas = betas, !betas.isEmpty {
             headers["anthropic-beta"] = betas.joined(separator: ",")
