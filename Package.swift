@@ -23,18 +23,13 @@ let package = Package(
     ],
     traits: [
         .trait(name: "CoreML"),
-        .trait(name: "MLX"),
-        .trait(name: "Llama"),
         .default(enabledTraits: []),
     ],
     dependencies: [
         .package(url: "https://github.com/huggingface/swift-transformers", from: "1.0.0"),
         .package(url: "https://github.com/mattt/EventSource", from: "1.3.0"),
         .package(url: "https://github.com/mattt/JSONSchema", from: "1.3.0"),
-        .package(url: "https://github.com/mattt/llama.swift", .upToNextMajor(from: "2.7484.0")),
         .package(url: "https://github.com/mattt/PartialJSONDecoder", from: "1.0.0"),
-        // mlx-swift-lm must be >= 2.25.5 for ToolSpec/tool calls and UserInput(chat:processing:tools:).
-        .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "2.25.5"),
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
     ],
     targets: [
@@ -46,29 +41,9 @@ let package = Package(
                 .product(name: "JSONSchema", package: "JSONSchema"),
                 .product(name: "PartialJSONDecoder", package: "PartialJSONDecoder"),
                 .product(
-                    name: "MLXLLM",
-                    package: "mlx-swift-lm",
-                    condition: .when(traits: ["MLX"])
-                ),
-                .product(
-                    name: "MLXVLM",
-                    package: "mlx-swift-lm",
-                    condition: .when(traits: ["MLX"])
-                ),
-                .product(
-                    name: "MLXLMCommon",
-                    package: "mlx-swift-lm",
-                    condition: .when(traits: ["MLX"])
-                ),
-                .product(
                     name: "Transformers",
                     package: "swift-transformers",
                     condition: .when(traits: ["CoreML"])
-                ),
-                .product(
-                    name: "LlamaSwift",
-                    package: "llama.swift",
-                    condition: .when(traits: ["Llama"])
                 ),
             ]
         ),
