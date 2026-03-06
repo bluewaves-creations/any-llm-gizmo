@@ -368,14 +368,19 @@ public struct Transcript: Sendable, Equatable, Codable {
         /// Ordered prompt segments.
         public var segments: [Segment]
 
+        /// Extended thinking content from reasoning models, if any.
+        public var thinkingContent: String?
+
         public init(
             id: String = UUID().uuidString,
             assetIDs: [String],
-            segments: [Segment]
+            segments: [Segment],
+            thinkingContent: String? = nil
         ) {
             self.id = id
             self.assetIDs = assetIDs
             self.segments = segments
+            self.thinkingContent = thinkingContent
         }
     }
 

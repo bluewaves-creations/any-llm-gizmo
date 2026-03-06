@@ -365,6 +365,8 @@ public struct OpenResponsesLanguageModel: LanguageModel {
     /// Model identifier to use for generation.
     public let model: String
 
+    let additionalHeaders: [String: String]
+
     private let urlSession: URLSession
 
     /// Creates an Open Responses language model.
@@ -373,11 +375,13 @@ public struct OpenResponsesLanguageModel: LanguageModel {
     ///   - baseURL: Base URL for the API (e.g. `https://api.openai.com/v1/` or `https://openrouter.ai/api/v1/`). Must end with `/`.
     ///   - apiKey: API key or closure that returns it.
     ///   - model: Model identifier (e.g. `gpt-4o-mini` or provider-specific id).
+    ///   - additionalHeaders: Extra HTTP headers merged into every request.
     ///   - session: URL session for network requests.
     public init(
         baseURL: URL,
         apiKey tokenProvider: @escaping @autoclosure @Sendable () -> String,
         model: String,
+        additionalHeaders: [String: String] = [:],
         session: URLSession = URLSession(configuration: .default)
     ) {
         var baseURL = baseURL
@@ -387,6 +391,7 @@ public struct OpenResponsesLanguageModel: LanguageModel {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.model = model
+        self.additionalHeaders = additionalHeaders
         self.urlSession = session
     }
 
@@ -436,7 +441,7 @@ public struct OpenResponsesLanguageModel: LanguageModel {
                             urlSession.fetchEventStream(
                                 .post,
                                 url: url,
-                                headers: ["Authorization": "Bearer \(tokenProvider())"],
+                                headers: ["Authorization": "Bearer \(tokenProvider())"].merging(additionalHeaders) { _, new in new },
                                 body: body
                             )
                         var accumulatedText = ""
@@ -508,7 +513,7 @@ public struct OpenResponsesLanguageModel: LanguageModel {
             let resp: OpenResponsesAPI.Response = try await urlSession.fetch(
                 .post,
                 url: url,
-                headers: ["Authorization": "Bearer \(tokenProvider())"],
+                headers: ["Authorization": "Bearer \(tokenProvider())"].merging(additionalHeaders) { _, new in new },
                 body: body
             )
 

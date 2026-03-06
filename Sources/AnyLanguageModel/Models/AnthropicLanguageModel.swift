@@ -278,6 +278,8 @@ public struct AnthropicLanguageModel: LanguageModel {
     /// The model identifier to use for generation.
     public let model: String
 
+    let additionalHeaders: [String: String]
+
     private let urlSession: URLSession
 
     /// Creates an Anthropic language model.
@@ -288,6 +290,7 @@ public struct AnthropicLanguageModel: LanguageModel {
     ///   - apiVersion: The API version to use for requests. Defaults to `2023-06-01`.
     ///   - betas: Optional beta version(s) of the API to use.
     ///   - model: The model identifier (for example, "claude-3-5-sonnet-20241022").
+    ///   - additionalHeaders: Extra HTTP headers merged into every request.
     ///   - session: The URL session to use for network requests.
     public init(
         baseURL: URL = defaultBaseURL,
@@ -295,6 +298,7 @@ public struct AnthropicLanguageModel: LanguageModel {
         apiVersion: String = defaultAPIVersion,
         betas: [String]? = nil,
         model: String,
+        additionalHeaders: [String: String] = [:],
         session: URLSession = URLSession(configuration: .default)
     ) {
         var baseURL = baseURL
@@ -307,6 +311,7 @@ public struct AnthropicLanguageModel: LanguageModel {
         self.apiVersion = apiVersion
         self.betas = betas
         self.model = model
+        self.additionalHeaders = additionalHeaders
         self.urlSession = session
     }
 
@@ -382,10 +387,19 @@ public struct AnthropicLanguageModel: LanguageModel {
             }
         }.joined()
 
+        let thinkingText = message.content.compactMap { block -> String? in
+            switch block {
+            case .thinking(let t): return t.thinking
+            default: return nil
+            }
+        }.joined()
+        let thinkingContent = thinkingText.isEmpty ? nil : thinkingText
+
         if type == String.self {
             return LanguageModelSession.Response(
                 content: text as! Content,
                 rawContent: GeneratedContent(text),
+                thinkingContent: thinkingContent,
                 transcriptEntries: ArraySlice(entries)
             )
         }
@@ -395,6 +409,7 @@ public struct AnthropicLanguageModel: LanguageModel {
         return LanguageModelSession.Response(
             content: content,
             rawContent: rawContent,
+            thinkingContent: thinkingContent,
             transcriptEntries: ArraySlice(entries)
         )
     }
@@ -493,6 +508,8 @@ public struct AnthropicLanguageModel: LanguageModel {
         if let betas = betas, !betas.isEmpty {
             headers["anthropic-beta"] = betas.joined(separator: ",")
         }
+
+        headers.merge(additionalHeaders) { _, new in new }
 
         return headers
     }
@@ -864,11 +881,16 @@ private enum AnthropicContent: Codable, Sendable {
     case image(AnthropicImage)
     case toolUse(AnthropicToolUse)
     case toolResult(AnthropicToolResult)
+    case thinking(AnthropicThinking)
 
     enum CodingKeys: String, CodingKey { case type }
 
     enum ContentType: String, Codable {
-        case text = "text", image = "image", toolUse = "tool_use", toolResult = "tool_result"
+        case text = "text"
+        case image = "image"
+        case toolUse = "tool_use"
+        case toolResult = "tool_result"
+        case thinking = "thinking"
     }
 
     init(from decoder: any Decoder) throws {
@@ -883,6 +905,8 @@ private enum AnthropicContent: Codable, Sendable {
             self = .toolUse(try AnthropicToolUse(from: decoder))
         case .toolResult:
             self = .toolResult(try AnthropicToolResult(from: decoder))
+        case .thinking:
+            self = .thinking(try AnthropicThinking(from: decoder))
         }
     }
 
@@ -892,6 +916,7 @@ private enum AnthropicContent: Codable, Sendable {
         case .image(let i): try i.encode(to: encoder)
         case .toolUse(let u): try u.encode(to: encoder)
         case .toolResult(let r): try r.encode(to: encoder)
+        case .thinking(let th): try th.encode(to: encoder)
         }
     }
 }
@@ -903,6 +928,16 @@ private struct AnthropicText: Codable, Sendable {
     init(text: String) {
         self.type = "text"
         self.text = text
+    }
+}
+
+private struct AnthropicThinking: Codable, Sendable {
+    let type: String
+    let thinking: String
+
+    init(thinking: String) {
+        self.type = "thinking"
+        self.thinking = thinking
     }
 }
 
@@ -1093,6 +1128,7 @@ private enum AnthropicStreamEvent: Codable, Sendable {
         struct ContentBlock: Codable, Sendable {
             let type: String
             let text: String?
+            let thinking: String?
         }
     }
 
@@ -1103,6 +1139,7 @@ private enum AnthropicStreamEvent: Codable, Sendable {
 
         enum Delta: Codable, Sendable {
             case textDelta(TextDelta)
+            case thinkingDelta(ThinkingDelta)
             case inputJsonDelta(InputJsonDelta)
             case ignored
 
@@ -1115,6 +1152,8 @@ private enum AnthropicStreamEvent: Codable, Sendable {
                 switch type {
                 case "text_delta":
                     self = .textDelta(try TextDelta(from: decoder))
+                case "thinking_delta":
+                    self = .thinkingDelta(try ThinkingDelta(from: decoder))
                 case "input_json_delta":
                     self = .inputJsonDelta(try InputJsonDelta(from: decoder))
                 default:
@@ -1125,6 +1164,7 @@ private enum AnthropicStreamEvent: Codable, Sendable {
             func encode(to encoder: any Encoder) throws {
                 switch self {
                 case .textDelta(let delta): try delta.encode(to: encoder)
+                case .thinkingDelta(let delta): try delta.encode(to: encoder)
                 case .inputJsonDelta(let delta): try delta.encode(to: encoder)
                 case .ignored:
                     var container = encoder.container(keyedBy: CodingKeys.self)
@@ -1135,6 +1175,11 @@ private enum AnthropicStreamEvent: Codable, Sendable {
             struct TextDelta: Codable, Sendable {
                 let type: String
                 let text: String
+            }
+
+            struct ThinkingDelta: Codable, Sendable {
+                let type: String
+                let thinking: String
             }
 
             struct InputJsonDelta: Codable, Sendable {

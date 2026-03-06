@@ -393,6 +393,8 @@ public struct OpenAILanguageModel: LanguageModel {
     /// The API variant to use.
     public let apiVariant: APIVariant
 
+    let additionalHeaders: [String: String]
+
     private let urlSession: URLSession
 
     /// Creates an OpenAI language model.
@@ -402,12 +404,14 @@ public struct OpenAILanguageModel: LanguageModel {
     ///   - apiKey: Your OpenAI API key or a closure that returns it.
     ///   - model: The model identifier (for example, "gpt-4" or "gpt-3.5-turbo").
     ///   - apiVariant: The API variant to use. Defaults to `.chatCompletions`.
+    ///   - additionalHeaders: Extra HTTP headers merged into every request.
     ///   - session: The URL session to use for network requests.
     public init(
         baseURL: URL = defaultBaseURL,
         apiKey tokenProvider: @escaping @autoclosure @Sendable () -> String,
         model: String,
         apiVariant: APIVariant = .chatCompletions,
+        additionalHeaders: [String: String] = [:],
         session: URLSession = URLSession(configuration: .default)
     ) {
         var baseURL = baseURL
@@ -419,6 +423,7 @@ public struct OpenAILanguageModel: LanguageModel {
         self.tokenProvider = tokenProvider
         self.model = model
         self.apiVariant = apiVariant
+        self.additionalHeaders = additionalHeaders
         self.urlSession = session
     }
 
@@ -490,7 +495,7 @@ public struct OpenAILanguageModel: LanguageModel {
                 url: url,
                 headers: [
                     "Authorization": "Bearer \(tokenProvider())"
-                ],
+                ].merging(additionalHeaders) { _, new in new },
                 body: body
             )
 
@@ -598,7 +603,7 @@ public struct OpenAILanguageModel: LanguageModel {
                 url: url,
                 headers: [
                     "Authorization": "Bearer \(tokenProvider())"
-                ],
+                ].merging(additionalHeaders) { _, new in new },
                 body: body
             )
 

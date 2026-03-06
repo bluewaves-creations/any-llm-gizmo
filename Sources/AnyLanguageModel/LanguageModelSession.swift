@@ -174,20 +174,24 @@ public final class LanguageModelSession: @unchecked Sendable {
     public struct Response<Content>: Sendable where Content: Generable, Content: Sendable {
         public let content: Content
         public let rawContent: GeneratedContent
+        public let thinkingContent: String?
         public let transcriptEntries: ArraySlice<Transcript.Entry>
 
         /// Creates a response value from generated content and transcript entries.
         /// - Parameters:
         ///   - content: The decoded response content.
         ///   - rawContent: The raw content produced by the model.
+        ///   - thinkingContent: Extended thinking content from reasoning models.
         ///   - transcriptEntries: Transcript entries associated with the response.
         public init(
             content: Content,
             rawContent: GeneratedContent,
+            thinkingContent: String? = nil,
             transcriptEntries: ArraySlice<Transcript.Entry>
         ) {
             self.content = content
             self.rawContent = rawContent
+            self.thinkingContent = thinkingContent
             self.transcriptEntries = transcriptEntries
         }
     }

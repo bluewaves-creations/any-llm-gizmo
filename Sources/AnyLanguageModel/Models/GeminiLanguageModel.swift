@@ -186,6 +186,8 @@ public struct GeminiLanguageModel: LanguageModel {
     /// Internal storage for the deprecated serverTools property.
     internal var _serverTools: [CustomGenerationOptions.ServerTool]
 
+    let additionalHeaders: [String: String]
+
     private let urlSession: URLSession
 
     /// Creates a new Gemini language model.
@@ -195,12 +197,14 @@ public struct GeminiLanguageModel: LanguageModel {
     ///   - tokenProvider: A closure that provides the API key.
     ///   - apiVersion: The API version to use.
     ///   - model: The model identifier.
+    ///   - additionalHeaders: Extra HTTP headers merged into every request.
     ///   - session: The URL session for network requests.
     public init(
         baseURL: URL = defaultBaseURL,
         apiKey tokenProvider: @escaping @autoclosure @Sendable () -> String,
         apiVersion: String = defaultAPIVersion,
         model: String,
+        additionalHeaders: [String: String] = [:],
         session: URLSession = URLSession(configuration: .default)
     ) {
         var baseURL = baseURL
@@ -214,6 +218,7 @@ public struct GeminiLanguageModel: LanguageModel {
         self.model = model
         self._thinking = .disabled
         self._serverTools = []
+        self.additionalHeaders = additionalHeaders
         self.urlSession = session
     }
 
@@ -256,6 +261,7 @@ public struct GeminiLanguageModel: LanguageModel {
         self.model = model
         self._thinking = thinking
         self._serverTools = serverTools
+        self.additionalHeaders = [:]
         self.urlSession = session
     }
 
@@ -463,9 +469,11 @@ public struct GeminiLanguageModel: LanguageModel {
     }
 
     private func buildHeaders() -> [String: String] {
-        let headers: [String: String] = [
+        var headers: [String: String] = [
             "x-goog-api-key": tokenProvider()
         ]
+
+        headers.merge(additionalHeaders) { _, new in new }
 
         return headers
     }
