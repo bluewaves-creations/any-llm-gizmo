@@ -12,6 +12,21 @@ extension OpenAILanguageModel {
             model: model
         )
     }
+
+    /// Creates an OpenAI-compatible model routed through Cloudflare AI Gateway custom provider.
+    public static func cloudflareHosted(
+        gatewayURL: URL,
+        cfToken: String,
+        apiKey: String,
+        model: String
+    ) -> OpenAILanguageModel {
+        OpenAILanguageModel(
+            baseURL: gatewayURL,
+            apiKey: apiKey,
+            model: model,
+            additionalHeaders: ["cf-aig-authorization": "Bearer \(cfToken)"]
+        )
+    }
 }
 
 extension OpenResponsesLanguageModel {
