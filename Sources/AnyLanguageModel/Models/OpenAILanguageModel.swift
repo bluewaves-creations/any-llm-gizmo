@@ -714,7 +714,7 @@ public struct OpenAILanguageModel: LanguageModel {
                                     url: url,
                                     headers: [
                                         "Authorization": "Bearer \(tokenProvider())"
-                                    ],
+                                    ].merging(additionalHeaders) { _, new in new },
                                     body: body
                                 )
 
@@ -798,7 +798,7 @@ public struct OpenAILanguageModel: LanguageModel {
                                     url: url,
                                     headers: [
                                         "Authorization": "Bearer \(tokenProvider())"
-                                    ],
+                                    ].merging(additionalHeaders) { _, new in new },
                                     body: body
                                 )
 
