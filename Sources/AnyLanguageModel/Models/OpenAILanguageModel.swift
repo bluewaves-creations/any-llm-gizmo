@@ -1619,7 +1619,7 @@ private enum OpenAIResponsesServerEvent: Decodable, Sendable {
         switch type {
         case "response.output_text.delta":
             self = .outputTextDelta(try container.decode(String.self, forKey: .delta))
-        case "response.reasoning.delta", "response.reasoning_summary_text.delta":
+        case "response.reasoning.delta", "response.reasoning_summary_text.delta", "response.reasoning_text.delta":
             self = .reasoningDelta(try container.decode(String.self, forKey: .delta))
         case "response.tool_call.created":
             self = .toolCallCreated(try container.decode(OpenAIToolCall.self, forKey: .toolCall))

@@ -1171,7 +1171,7 @@ private enum OpenResponsesStreamEvent: Decodable, Sendable {
         switch type {
         case "response.output_text.delta":
             self = .outputTextDelta(try c.decode(String.self, forKey: .delta))
-        case "response.reasoning.delta", "response.reasoning_summary_text.delta":
+        case "response.reasoning.delta", "response.reasoning_summary_text.delta", "response.reasoning_text.delta":
             self = .reasoningDelta(try c.decode(String.self, forKey: .delta))
         case "response.completed":
             self = .completed
