@@ -811,11 +811,23 @@ public struct OpenAILanguageModel: LanguageModel {
                                 )
 
                             var accumulatedText = ""
+                            var accumulatedReasoning = ""
 
                             for try await chunk in events {
                                 if let choice = chunk.choices.first {
+                                    if let reasoning = choice.delta.reasoningContent, !reasoning.isEmpty {
+                                        accumulatedReasoning += reasoning
+                                        if type == String.self {
+                                            let raw = GeneratedContent(accumulatedText)
+                                            let content: Content.PartiallyGenerated = ((accumulatedText.isEmpty ? " " : accumulatedText) as! Content)
+                                                .asPartiallyGenerated()
+                                            continuation.yield(.init(content: content, rawContent: raw, thinkingContent: accumulatedReasoning))
+                                        }
+                                    }
+
                                     if let piece = choice.delta.content, !piece.isEmpty {
                                         accumulatedText += piece
+                                        let thinking = accumulatedReasoning.isEmpty ? nil : accumulatedReasoning
 
                                         var raw: GeneratedContent
                                         let content: Content.PartiallyGenerated?
@@ -836,7 +848,7 @@ public struct OpenAILanguageModel: LanguageModel {
                                         }
 
                                         if let content {
-                                            continuation.yield(.init(content: content, rawContent: raw))
+                                            continuation.yield(.init(content: content, rawContent: raw, thinkingContent: thinking))
                                         }
                                     }
 
@@ -1633,6 +1645,12 @@ private struct OpenAIChatCompletionsChunk: Decodable, Sendable {
         struct Delta: Decodable, Sendable {
             let role: String?
             let content: String?
+            let reasoningContent: String?
+
+            private enum CodingKeys: String, CodingKey {
+                case role, content
+                case reasoningContent = "reasoning_content"
+            }
         }
         let delta: Delta
         let finishReason: String?
