@@ -1178,6 +1178,9 @@ private enum OpenResponsesStreamEvent: Decodable, Sendable {
         case "response.failed":
             self = .failed
         default:
+            #if DEBUG
+            print("[OpenResponses] Ignored event: \(type ?? "nil")")
+            #endif
             self = .ignored
         }
     }
