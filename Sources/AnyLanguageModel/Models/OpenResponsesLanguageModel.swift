@@ -665,6 +665,7 @@ private enum OpenResponsesAPI {
                 input.append(
                     .object([
                         "type": .string("function_call_output"),
+                        "id": .string("fco_\(id)"),
                         "call_id": .string(id),
                         "output": .string(outputString),
                     ])
@@ -682,7 +683,37 @@ private enum OpenResponsesAPI {
                     if !t.isEmpty { body["instructions"] = .string(t) }
                 }
             case .assistant:
-                break
+                let contentBlocks: [JSONValue]
+                switch msg.content {
+                case .text(let t):
+                    contentBlocks = [.object([
+                        "type": .string("output_text"),
+                        "text": .string(t),
+                        "annotations": .array([]),
+                    ])]
+                case .blocks(let blocks):
+                    contentBlocks = blocks.map { b in
+                        switch b {
+                        case .text(let t):
+                            return .object([
+                                "type": .string("output_text"),
+                                "text": .string(t),
+                                "annotations": .array([]),
+                            ])
+                        case .imageURL(let url):
+                            return .object(["type": .string("input_image"), "image_url": .string(url)])
+                        }
+                    }
+                }
+                input.append(
+                    .object([
+                        "type": .string("message"),
+                        "role": .string("assistant"),
+                        "id": .string("msg_\(input.count)"),
+                        "status": .string("completed"),
+                        "content": .array(contentBlocks),
+                    ])
+                )
             }
         }
         body["input"] = .array(input)
@@ -830,30 +861,25 @@ extension Transcript {
                     )
                 )
             case .toolCalls(let toolCalls):
-                let rawCalls: [JSONValue] = toolCalls.map { call in
+                for call in toolCalls {
                     let argsStr =
                         (try? JSONEncoder().encode(call.arguments)).flatMap { String(data: $0, encoding: .utf8) }
                         ?? "{}"
-                    return .object([
-                        "id": .string(call.id),
-                        "type": .string("function_call"),
-                        "call_id": .string(call.id),
-                        "name": .string(call.toolName),
-                        "arguments": .string(argsStr),
-                    ])
-                }
-                list.append(
-                    OpenResponsesMessage(
-                        role: .raw(
-                            rawContent: .object([
-                                "type": .string("message"),
-                                "role": .string("assistant"),
-                                "content": .array(rawCalls),
-                            ])
-                        ),
-                        content: .text("")
+                    list.append(
+                        OpenResponsesMessage(
+                            role: .raw(
+                                rawContent: .object([
+                                    "type": .string("function_call"),
+                                    "id": .string("fc_\(call.id)"),
+                                    "call_id": .string(call.id),
+                                    "name": .string(call.toolName),
+                                    "arguments": .string(argsStr),
+                                ])
+                            ),
+                            content: .text("")
+                        )
                     )
-                )
+                }
             case .toolOutput(let out):
                 list.append(
                     OpenResponsesMessage(
@@ -913,6 +939,7 @@ private struct OpenResponsesTool: Sendable {
             "type": .string(type),
             "name": .string(name),
             "description": .string(description),
+            "strict": .null,
         ]
         if let p = parameters { obj["parameters"] = p }
         return .object(obj)

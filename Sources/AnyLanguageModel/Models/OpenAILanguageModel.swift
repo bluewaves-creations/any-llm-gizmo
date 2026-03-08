@@ -1124,7 +1124,37 @@ private enum Responses {
                 }
 
             case .assistant:
-                break
+                let contentBlocks: [JSONValue]
+                switch msg.content {
+                case .text(let t):
+                    contentBlocks = [.object([
+                        "type": .string("output_text"),
+                        "text": .string(t),
+                        "annotations": .array([]),
+                    ])]
+                case .blocks(let blocks):
+                    contentBlocks = blocks.map { b in
+                        switch b {
+                        case .text(let t):
+                            return .object([
+                                "type": .string("output_text"),
+                                "text": .string(t),
+                                "annotations": .array([]),
+                            ])
+                        case .imageURL(let url):
+                            return .object(["type": .string("input_image"), "image_url": .string(url)])
+                        }
+                    }
+                }
+                outputs.append(
+                    .object([
+                        "type": .string("message"),
+                        "role": .string("assistant"),
+                        "id": .string("msg_\(outputs.count)"),
+                        "status": .string("completed"),
+                        "content": .array(contentBlocks),
+                    ])
+                )
             }
         }
         body["input"] = .array(outputs)
