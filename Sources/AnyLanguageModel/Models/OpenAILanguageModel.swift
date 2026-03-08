@@ -719,11 +719,13 @@ public struct OpenAILanguageModel: LanguageModel {
                                 )
 
                             var accumulatedText = ""
+                            var accumulatedReasoning = ""
 
                             for try await event in events {
                                 switch event {
                                 case .outputTextDelta(let delta):
                                     accumulatedText += delta
+                                    let thinking = accumulatedReasoning.isEmpty ? nil : accumulatedReasoning
 
                                     var raw: GeneratedContent
                                     let content: Content.PartiallyGenerated?
@@ -738,20 +740,26 @@ public struct OpenAILanguageModel: LanguageModel {
                                         if let parsed = try? type.init(raw) {
                                             content = parsed.asPartiallyGenerated()
                                         } else {
-                                            // Skip snapshots until the accumulated JSON parses.
                                             content = nil
                                         }
                                     }
 
                                     if let content {
-                                        continuation.yield(.init(content: content, rawContent: raw))
+                                        continuation.yield(.init(content: content, rawContent: raw, thinkingContent: thinking))
+                                    }
+
+                                case .reasoningDelta(let delta):
+                                    accumulatedReasoning += delta
+                                    if type == String.self {
+                                        let raw = GeneratedContent(accumulatedText)
+                                        let content: Content.PartiallyGenerated = ((accumulatedText.isEmpty ? " " : accumulatedText) as! Content)
+                                            .asPartiallyGenerated()
+                                        continuation.yield(.init(content: content, rawContent: raw, thinkingContent: accumulatedReasoning))
                                     }
 
                                 case .toolCallCreated(_):
-                                    // Minimal streaming implementation ignores tool call events
                                     break
                                 case .toolCallDelta(_):
-                                    // Minimal streaming implementation ignores tool call deltas
                                     break
                                 case .completed(_):
                                     continuation.finish()
@@ -1587,6 +1595,7 @@ private struct OpenAIToolFunction: Codable, Sendable {
 
 private enum OpenAIResponsesServerEvent: Decodable, Sendable {
     case outputTextDelta(String)
+    case reasoningDelta(String)
     case toolCallCreated(OpenAIToolCall)
     case toolCallDelta(OpenAIToolCall)
     case completed(String)
@@ -1598,6 +1607,8 @@ private enum OpenAIResponsesServerEvent: Decodable, Sendable {
         switch type {
         case "response.output_text.delta":
             self = .outputTextDelta(try container.decode(String.self, forKey: .delta))
+        case "response.reasoning.delta", "response.reasoning_summary_text.delta":
+            self = .reasoningDelta(try container.decode(String.self, forKey: .delta))
         case "response.tool_call.created":
             self = .toolCallCreated(try container.decode(OpenAIToolCall.self, forKey: .toolCall))
         case "response.tool_call.delta":

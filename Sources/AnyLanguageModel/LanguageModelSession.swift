@@ -155,7 +155,8 @@ public final class LanguageModelSession: @unchecked Sendable {
                         let responseEntry = Transcript.Entry.response(
                             Transcript.Response(
                                 assetIDs: [],
-                                segments: [.text(.init(content: textContent))]
+                                segments: [.text(.init(content: textContent))],
+                                thinkingContent: lastSnapshot.thinkingContent
                             )
                         )
                         session.withMutation(keyPath: \.transcript) {
@@ -821,14 +822,17 @@ extension LanguageModelSession {
         public struct Snapshot: Sendable where Content.PartiallyGenerated: Sendable {
             public var content: Content.PartiallyGenerated
             public var rawContent: GeneratedContent
+            public var thinkingContent: String?
 
             /// Creates a snapshot from partially generated content and raw content.
             /// - Parameters:
             ///   - content: The partially generated content.
             ///   - rawContent: The raw content produced by the model.
-            public init(content: Content.PartiallyGenerated, rawContent: GeneratedContent) {
+            ///   - thinkingContent: Extended thinking content from reasoning models.
+            public init(content: Content.PartiallyGenerated, rawContent: GeneratedContent, thinkingContent: String? = nil) {
                 self.content = content
                 self.rawContent = rawContent
+                self.thinkingContent = thinkingContent
             }
         }
     }

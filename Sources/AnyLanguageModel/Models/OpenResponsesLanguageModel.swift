@@ -450,10 +450,12 @@ public struct OpenResponsesLanguageModel: LanguageModel {
                                 body: body
                             )
                         var accumulatedText = ""
+                        var accumulatedReasoning = ""
                         for try await event in events {
                             switch event {
                             case .outputTextDelta(let delta):
                                 accumulatedText += delta
+                                let thinking = accumulatedReasoning.isEmpty ? nil : accumulatedReasoning
                                 var raw: GeneratedContent
                                 let content: Content.PartiallyGenerated?
                                 if type == String.self {
@@ -466,7 +468,15 @@ public struct OpenResponsesLanguageModel: LanguageModel {
                                     content = (try? type.init(raw))?.asPartiallyGenerated()
                                 }
                                 if let content {
-                                    continuation.yield(.init(content: content, rawContent: raw))
+                                    continuation.yield(.init(content: content, rawContent: raw, thinkingContent: thinking))
+                                }
+                            case .reasoningDelta(let delta):
+                                accumulatedReasoning += delta
+                                if type == String.self {
+                                    let raw = GeneratedContent(accumulatedText)
+                                    let content: Content.PartiallyGenerated = ((accumulatedText.isEmpty ? " " : accumulatedText) as! Content)
+                                        .asPartiallyGenerated()
+                                    continuation.yield(.init(content: content, rawContent: raw, thinkingContent: accumulatedReasoning))
                                 }
                             case .completed:
                                 continuation.finish()
@@ -1150,6 +1160,7 @@ private func resolveToolCalls(
 
 private enum OpenResponsesStreamEvent: Decodable, Sendable {
     case outputTextDelta(String)
+    case reasoningDelta(String)
     case completed
     case failed
     case ignored
@@ -1160,6 +1171,8 @@ private enum OpenResponsesStreamEvent: Decodable, Sendable {
         switch type {
         case "response.output_text.delta":
             self = .outputTextDelta(try c.decode(String.self, forKey: .delta))
+        case "response.reasoning.delta", "response.reasoning_summary_text.delta":
+            self = .reasoningDelta(try c.decode(String.self, forKey: .delta))
         case "response.completed":
             self = .completed
         case "response.failed":

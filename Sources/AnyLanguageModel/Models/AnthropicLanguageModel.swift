@@ -459,26 +459,40 @@ public struct AnthropicLanguageModel: LanguageModel {
                         )
 
                     var accumulatedText = ""
+                    var accumulatedThinking = ""
                     let expectsStructuredResponse = type != String.self
 
                     for try await event in events {
                         switch event {
                         case .contentBlockDelta(let delta):
-                            if case .textDelta(let textDelta) = delta.delta {
+                            switch delta.delta {
+                            case .textDelta(let textDelta):
                                 accumulatedText += textDelta.text
+                                let thinking = accumulatedThinking.isEmpty ? nil : accumulatedThinking
 
                                 if expectsStructuredResponse {
-                                    if let snapshot: LanguageModelSession.ResponseStream<Content>.Snapshot =
+                                    if var snapshot: LanguageModelSession.ResponseStream<Content>.Snapshot =
                                         try? partialSnapshot(from: accumulatedText)
                                     {
+                                        snapshot.thinkingContent = thinking
                                         continuation.yield(snapshot)
                                     }
                                 } else {
                                     let raw = GeneratedContent(accumulatedText)
                                     let content: Content.PartiallyGenerated = (accumulatedText as! Content)
                                         .asPartiallyGenerated()
-                                    continuation.yield(.init(content: content, rawContent: raw))
+                                    continuation.yield(.init(content: content, rawContent: raw, thinkingContent: thinking))
                                 }
+                            case .thinkingDelta(let thinkingDelta):
+                                accumulatedThinking += thinkingDelta.thinking
+                                if !expectsStructuredResponse {
+                                    let raw = GeneratedContent(accumulatedText)
+                                    let content: Content.PartiallyGenerated = ((accumulatedText.isEmpty ? " " : accumulatedText) as! Content)
+                                        .asPartiallyGenerated()
+                                    continuation.yield(.init(content: content, rawContent: raw, thinkingContent: accumulatedThinking))
+                                }
+                            case .inputJsonDelta, .ignored:
+                                break
                             }
                         case .messageStop:
                             continuation.finish()
